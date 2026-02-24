@@ -1,9 +1,5 @@
 namespace PaymentGateway.Api.IntegrationTests;
 
-/// <summary>
-/// Integration tests for POST /api/payments.
-/// Exercises the full HTTP pipeline with WireMock standing in for the bank.
-/// </summary>
 [FeatureDescription("Processing a payment through the API")]
 [Label("ProcessPaymentApi")]
 public partial class ProcessPaymentApiFeature
