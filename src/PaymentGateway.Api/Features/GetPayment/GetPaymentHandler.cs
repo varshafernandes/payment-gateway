@@ -5,6 +5,9 @@ using PaymentGateway.Api.Shared;
 
 namespace PaymentGateway.Api.Features.GetPayment;
 
+/// <summary>
+/// Handles <see cref="GetPaymentQuery"/> by looking up a payment from the repository.
+/// </summary>
 public sealed class GetPaymentQueryHandler
     : IRequestHandler<GetPaymentQuery, Result<GetPaymentResponse>>
 {
