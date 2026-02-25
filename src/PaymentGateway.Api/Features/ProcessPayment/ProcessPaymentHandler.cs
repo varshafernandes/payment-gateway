@@ -28,18 +28,18 @@ public sealed class ProcessPaymentCommandHandler
         ProcessPaymentCommand command,
         CancellationToken cancellationToken)
     {
-        var cardLastFour = command.CardNumber[^4..];
+        var cardLastFour = command.CardNumber![^4..];
 
         _logger.LogInformation(
             "Processing payment — card ending {CardLastFour}, {Currency} {Amount}",
             cardLastFour, command.Currency, command.Amount);
 
         var bankRequest = new BankPaymentRequest(
-            command.CardNumber,
-            $"{command.ExpiryMonth:D2}/{command.ExpiryYear}",
-            command.Currency,
-            command.Amount,
-            command.Cvv);
+            command.CardNumber!,
+            $"{command.ExpiryMonth!.Value:D2}/{command.ExpiryYear!.Value}",
+            command.Currency!,
+            command.Amount!.Value,
+            command.Cvv!);
 
         var bankResult = await _bankClient.ProcessPaymentAsync(bankRequest, cancellationToken);
 
@@ -53,12 +53,12 @@ public sealed class ProcessPaymentCommandHandler
 
         var bankResponse = bankResult.Value!;
         var status = bankResponse.Authorized ? PaymentStatus.Authorized : PaymentStatus.Declined;
-        var amount = new Money(command.Amount, command.Currency);
+        var amount = new Money(command.Amount!.Value, command.Currency!);
 
         var payment = Payment.Create(
             cardLastFour,
-            command.ExpiryMonth,
-            command.ExpiryYear,
+            command.ExpiryMonth!.Value,
+            command.ExpiryYear!.Value,
             amount,
             status,
             bankResponse.AuthorizationCode);
