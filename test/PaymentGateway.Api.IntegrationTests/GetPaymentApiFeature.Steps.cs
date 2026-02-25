@@ -8,9 +8,6 @@ using PaymentGateway.Api.IntegrationTests.Utilities;
 
 using Shouldly;
 
-using WireMock.RequestBuilders;
-using WireMock.ResponseBuilders;
-
 namespace PaymentGateway.Api.IntegrationTests;
 
 public partial class GetPaymentApiFeature : WireMockFeatureFixture
@@ -21,17 +18,7 @@ public partial class GetPaymentApiFeature : WireMockFeatureFixture
     private ProcessPaymentResponse? _createdPayment;
     private GetPaymentResponse? _retrievedPayment;
 
-    private Task Given_the_bank_will_authorise()
-    {
-        BankSimulator.Reset();
-        BankSimulator
-            .Given(Request.Create().WithPath("/payments").UsingPost())
-            .RespondWith(Response.Create()
-                .WithStatusCode(200)
-                .WithHeader("Content-Type", "application/json")
-                .WithBodyAsJson(new { authorized = true, authorization_code = "test-auth-code" }));
-        return Task.CompletedTask;
-    }
+    private Task Given_the_bank_will_authorise() => SetupBankWillAuthorise();
 
     private async Task Given_a_payment_has_been_created()
     {
@@ -59,42 +46,33 @@ public partial class GetPaymentApiFeature : WireMockFeatureFixture
         _httpResponse = await Client.GetAsync("/api/payments/not-a-guid");
     }
 
-    private Task Then_the_response_status_code_is_200()
-    {
-        _httpResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        return Task.CompletedTask;
-    }
-
-    private Task Then_the_response_status_code_is_404()
-    {
-        _httpResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        return Task.CompletedTask;
-    }
+    private Task Then_the_response_status_code_is_200() => AssertStatusCode(_httpResponse, HttpStatusCode.OK);
+    private Task Then_the_response_status_code_is_404() => AssertStatusCode(_httpResponse, HttpStatusCode.NotFound);
 
     private Task Then_the_retrieved_payment_matches_the_original()
     {
         _retrievedPayment.ShouldNotBeNull();
         _retrievedPayment!.Id.ShouldBe(_createdPayment!.Id);
         _retrievedPayment.Status.ShouldBe(PaymentStatus.Authorized.ToString());
-        _retrievedPayment.CardNumberLastFour.ShouldBe(_request.CardNumber[^4..]);
-        _retrievedPayment.ExpiryMonth.ShouldBe(_request.ExpiryMonth);
-        _retrievedPayment.ExpiryYear.ShouldBe(_request.ExpiryYear);
+        _retrievedPayment.CardNumberLastFour.ShouldBe(_request.CardNumber![^4..]);
+        _retrievedPayment.ExpiryMonth.ShouldBe(_request.ExpiryMonth!.Value);
+        _retrievedPayment.ExpiryYear.ShouldBe(_request.ExpiryYear!.Value);
         _retrievedPayment.Currency.ShouldBe(_request.Currency);
-        _retrievedPayment.Amount.ShouldBe(_request.Amount);
+        _retrievedPayment.Amount.ShouldBe(_request.Amount!.Value);
         return Task.CompletedTask;
     }
 
     private async Task Then_the_get_response_body_does_not_contain_full_card_number()
     {
         var body = await _httpResponse.Content.ReadAsStringAsync();
-        body.ShouldNotContain(_request.CardNumber);
+        body.ShouldNotContain(_request.CardNumber!);
     }
 
     private Task Then_the_get_response_contains_only_last_four_digits()
     {
         _retrievedPayment.ShouldNotBeNull();
         _retrievedPayment!.CardNumberLastFour.Length.ShouldBe(4);
-        _retrievedPayment.CardNumberLastFour.ShouldBe(_request.CardNumber[^4..]);
+        _retrievedPayment.CardNumberLastFour.ShouldBe(_request.CardNumber![^4..]);
         return Task.CompletedTask;
     }
 }

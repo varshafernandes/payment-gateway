@@ -20,6 +20,8 @@ public partial class PaymentFeature : FeatureFixture
     private int _expiryYear;
     private Money _amount = null!;
     private string _authorisationCode = null!;
+    private Payment? _payment2;
+    private GetPaymentResponse? _getResponse;
 
     private Task Given_valid_payment_details()
     {
@@ -116,9 +118,6 @@ public partial class PaymentFeature : FeatureFixture
         _payment!.Id.ShouldNotBe(Guid.Empty);
         return Task.CompletedTask;
     }
-
-    private Payment? _payment2;
-    private GetPaymentResponse? _getResponse;
 
     private Task Then_the_card_last_four_has_exactly_four_digits()
     {

@@ -17,6 +17,8 @@ namespace PaymentGateway.Api.Tests.Features;
 
 public partial class ProcessPaymentHandlerFeature : FeatureFixture
 {
+    private const string SimulatedRepositoryFailure = "Simulated repository failure";
+
     private readonly PaymentFaker _faker = new();
     private readonly IBankClient _bankClient = Substitute.For<IBankClient>();
     private readonly IPaymentRepository _repository = Substitute.For<IPaymentRepository>();
@@ -75,7 +77,7 @@ public partial class ProcessPaymentHandlerFeature : FeatureFixture
     private Task Given_the_repository_throws_on_add()
     {
         _repository.When(r => r.Add(Arg.Any<Payment>()))
-            .Do(_ => throw new InvalidOperationException("Simulated repository failure"));
+            .Do(_ => throw new InvalidOperationException(SimulatedRepositoryFailure));
         return Task.CompletedTask;
     }
 
@@ -172,7 +174,7 @@ public partial class ProcessPaymentHandlerFeature : FeatureFixture
     private Task Then_the_exception_is_an_InvalidOperationException()
     {
         _caughtException.ShouldBeOfType<InvalidOperationException>();
-        _caughtException!.Message.ShouldContain("Simulated repository failure");
+        _caughtException!.Message.ShouldContain(SimulatedRepositoryFailure);
         return Task.CompletedTask;
     }
 

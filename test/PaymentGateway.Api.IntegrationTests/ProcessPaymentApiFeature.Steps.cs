@@ -1,6 +1,8 @@
+using System.IO;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 
 using PaymentGateway.Api.Domain;
 using PaymentGateway.Api.Features.GetPayment;
@@ -22,17 +24,7 @@ public partial class ProcessPaymentApiFeature : WireMockFeatureFixture
     private HttpResponseMessage _httpResponse = null!;
     private ProcessPaymentResponse? _paymentResponse;
 
-    private Task Given_the_bank_will_authorise()
-    {
-        BankSimulator.Reset();
-        BankSimulator
-            .Given(Request.Create().WithPath("/payments").UsingPost())
-            .RespondWith(Response.Create()
-                .WithStatusCode(200)
-                .WithHeader("Content-Type", "application/json")
-                .WithBodyAsJson(new { authorized = true, authorization_code = "test-auth-code" }));
-        return Task.CompletedTask;
-    }
+    private Task Given_the_bank_will_authorise() => SetupBankWillAuthorise();
 
     private Task Given_the_bank_will_decline()
     {
@@ -74,7 +66,7 @@ public partial class ProcessPaymentApiFeature : WireMockFeatureFixture
 
     private async Task When_an_invalid_payment_request_is_posted()
     {
-        var invalidRequest = new ProcessPaymentRequest("", 0, 0, "", 0, "");
+        var invalidRequest = new ProcessPaymentRequest("", null, null, "", null, "");
         _httpResponse = await Client.PostAsJsonAsync("/api/payments", invalidRequest);
     }
 
@@ -165,23 +157,9 @@ public partial class ProcessPaymentApiFeature : WireMockFeatureFixture
         _httpResponse = await Client.PostAsync("/api/payments", content);
     }
 
-    private Task Then_the_response_status_code_is_200()
-    {
-        _httpResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        return Task.CompletedTask;
-    }
-
-    private Task Then_the_response_status_code_is_400()
-    {
-        _httpResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        return Task.CompletedTask;
-    }
-
-    private Task Then_the_response_status_code_is_502()
-    {
-        _httpResponse.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
-        return Task.CompletedTask;
-    }
+    private Task Then_the_response_status_code_is_200() => AssertStatusCode(_httpResponse, HttpStatusCode.OK);
+    private Task Then_the_response_status_code_is_400() => AssertStatusCode(_httpResponse, HttpStatusCode.BadRequest);
+    private Task Then_the_response_status_code_is_502() => AssertStatusCode(_httpResponse, HttpStatusCode.BadGateway);
 
     private Task Then_the_response_status_is_Authorized()
     {
@@ -200,11 +178,11 @@ public partial class ProcessPaymentApiFeature : WireMockFeatureFixture
     private Task Then_the_response_contains_the_correct_card_details()
     {
         _paymentResponse.ShouldNotBeNull();
-        _paymentResponse!.CardNumberLastFour.ShouldBe(_request.CardNumber[^4..]);
-        _paymentResponse.ExpiryMonth.ShouldBe(_request.ExpiryMonth);
-        _paymentResponse.ExpiryYear.ShouldBe(_request.ExpiryYear);
+        _paymentResponse!.CardNumberLastFour.ShouldBe(_request.CardNumber![^4..]);
+        _paymentResponse.ExpiryMonth.ShouldBe(_request.ExpiryMonth!.Value);
+        _paymentResponse.ExpiryYear.ShouldBe(_request.ExpiryYear!.Value);
         _paymentResponse.Currency.ShouldBe(_request.Currency);
-        _paymentResponse.Amount.ShouldBe(_request.Amount);
+        _paymentResponse.Amount.ShouldBe(_request.Amount!.Value);
         return Task.CompletedTask;
     }
 
@@ -218,7 +196,7 @@ public partial class ProcessPaymentApiFeature : WireMockFeatureFixture
         retrievedPayment.ShouldNotBeNull();
         retrievedPayment!.Id.ShouldBe(_paymentResponse.Id);
         retrievedPayment.Status.ShouldBe(PaymentStatus.Authorized.ToString());
-        retrievedPayment.CardNumberLastFour.ShouldBe(_request.CardNumber[^4..]);
+        retrievedPayment.CardNumberLastFour.ShouldBe(_request.CardNumber![^4..]);
     }
 
     private async Task Then_the_response_body_contains_validation_error()
@@ -264,13 +242,16 @@ public partial class ProcessPaymentApiFeature : WireMockFeatureFixture
 
     private async Task Then_the_response_has_required_field_errors_for_missing_numeric_fields()
     {
-        var errorResponse = await _httpResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+        var body = await _httpResponse.Content.ReadAsStringAsync();
+        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(body, opts);
         errorResponse.ShouldNotBeNull();
         errorResponse!.Code.ShouldBe("VALIDATION_FAILED");
         errorResponse.Errors.ShouldNotBeNull();
-        errorResponse.Errors!.ShouldContain(e => e.Field == "expiryMonth", "Expected required error for expiryMonth.");
-        errorResponse.Errors!.ShouldContain(e => e.Field == "expiryYear", "Expected required error for expiryYear.");
-        errorResponse.Errors!.ShouldContain(e => e.Field == "amount", "Expected required error for amount.");
+        var fields = string.Join(", ", errorResponse.Errors!.Select(e => $"'{e.Field}'"));
+        errorResponse.Errors!.ShouldContain(e => e.Field == "expiryMonth", $"Fields found: [{fields}]");
+        errorResponse.Errors!.ShouldContain(e => e.Field == "expiryYear",  $"Fields found: [{fields}]");
+        errorResponse.Errors!.ShouldContain(e => e.Field == "amount",      $"Fields found: [{fields}]");
     }
 
     private async Task Then_the_response_contains_structured_validation_errors()

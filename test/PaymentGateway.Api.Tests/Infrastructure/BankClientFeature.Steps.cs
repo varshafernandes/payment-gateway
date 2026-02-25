@@ -16,6 +16,10 @@ namespace PaymentGateway.Api.Tests.Infrastructure;
 
 public partial class BankClientFeature : FeatureFixture
 {
+    private const string TestBankBaseUrl       = "https://bank.test";
+    private const string TestAuthorisationCode = "AUTH-123";
+    private const string SampleCardNumber      = "1234567890123456";
+
     private readonly ILogger<BankClient> _logger = Substitute.For<ILogger<BankClient>>();
 
     private DelegatingHandler _handler = null!;
@@ -23,7 +27,7 @@ public partial class BankClientFeature : FeatureFixture
     private Result<BankPaymentResponse>? _result;
 
     private static readonly BankPaymentRequest SampleRequest =
-        new("1234567890123456", "06/2026", "GBP", 1000, "123");
+        new(SampleCardNumber, "06/2026", "GBP", 1000, "123");
 
     private Task Given_the_bank_throws_a_network_exception()
     {
@@ -56,7 +60,7 @@ public partial class BankClientFeature : FeatureFixture
 
     private Task Given_the_bank_returns_authorised()
     {
-        var body = JsonSerializer.Serialize(new { authorized = true, authorization_code = "AUTH-123" });
+        var body = JsonSerializer.Serialize(new { authorized = true, authorization_code = TestAuthorisationCode });
         _handler = new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
@@ -113,7 +117,7 @@ public partial class BankClientFeature : FeatureFixture
     {
         _result!.Value.ShouldNotBeNull();
         _result!.Value!.Authorized.ShouldBeTrue();
-        _result!.Value!.AuthorizationCode.ShouldBe("AUTH-123");
+        _result!.Value!.AuthorizationCode.ShouldBe(TestAuthorisationCode);
         return Task.CompletedTask;
     }
 
@@ -121,7 +125,7 @@ public partial class BankClientFeature : FeatureFixture
     {
         var httpClient = new HttpClient(_handler)
         {
-            BaseAddress = new Uri("https://bank.test")
+            BaseAddress = new Uri(TestBankBaseUrl)
         };
         return new BankClient(httpClient, _logger);
     }
@@ -145,7 +149,7 @@ public partial class BankClientFeature : FeatureFixture
 
     private Task Then_no_log_message_contains_the_full_card_number()
     {
-        var fullCardNumber = SampleRequest.CardNumber; 
+        var fullCardNumber = SampleCardNumber; 
 
         var allCalls = _logger.ReceivedCalls();
         foreach (var call in allCalls)
