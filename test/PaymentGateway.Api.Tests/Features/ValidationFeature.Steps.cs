@@ -244,6 +244,24 @@ public partial class ValidationFeature : FeatureFixture
         return Task.CompletedTask;
     }
 
+    private Task Given_a_command_with_null_expiry_month()
+    {
+        _command = PaymentCommandBuilder.Valid(Clock).WithExpiryMonth(null).Build();
+        return Task.CompletedTask;
+    }
+
+    private Task Given_a_command_with_null_expiry_year()
+    {
+        _command = PaymentCommandBuilder.Valid(Clock).WithExpiryYear(null).Build();
+        return Task.CompletedTask;
+    }
+
+    private Task Given_a_command_with_null_amount()
+    {
+        _command = PaymentCommandBuilder.Valid(Clock).WithAmount(null).Build();
+        return Task.CompletedTask;
+    }
+
     private async Task When_the_command_is_validated()
     {
         _validationResult = await _validator.ValidateAsync(_command);
@@ -294,6 +312,15 @@ public partial class ValidationFeature : FeatureFixture
 
     private Task Then_the_error_says_cvv_must_contain_digits_only()
         => AssertErrorMessage("CVV must contain digits only.");
+
+    private Task Then_the_error_says_expiry_month_is_required()
+        => AssertErrorMessage("Expiry month is required.");
+
+    private Task Then_the_error_says_expiry_year_is_required()
+        => AssertErrorMessage("Expiry year is required.");
+
+    private Task Then_the_error_says_amount_is_required()
+        => AssertErrorMessage("Amount is required.");
 
     private Task Then_the_error_is_on_CardNumber_field()
         => AssertErrorOnField("CardNumber");

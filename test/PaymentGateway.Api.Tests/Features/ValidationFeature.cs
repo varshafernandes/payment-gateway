@@ -379,4 +379,40 @@ public partial class ValidationFeature
             Then_the_error_says_currency_must_be_3_letter_iso,
             Then_the_error_is_on_Currency_field);
     }
+
+    [Scenario]
+    [Label("Missing expiry month fails with required message")]
+    public async Task Missing_expiry_month_fails()
+    {
+        await Runner.RunScenarioAsync(
+            Given_a_command_with_null_expiry_month,
+            When_the_command_is_validated,
+            Then_the_result_is_invalid,
+            Then_the_error_says_expiry_month_is_required,
+            Then_the_error_is_on_ExpiryMonth_field);
+    }
+
+    [Scenario]
+    [Label("Missing expiry year fails with required message")]
+    public async Task Missing_expiry_year_fails()
+    {
+        await Runner.RunScenarioAsync(
+            Given_a_command_with_null_expiry_year,
+            When_the_command_is_validated,
+            Then_the_result_is_invalid,
+            Then_the_error_says_expiry_year_is_required,
+            Then_the_error_is_on_ExpiryYear_field);
+    }
+
+    [Scenario]
+    [Label("Missing amount fails with required message")]
+    public async Task Missing_amount_fails()
+    {
+        await Runner.RunScenarioAsync(
+            Given_a_command_with_null_amount,
+            When_the_command_is_validated,
+            Then_the_result_is_invalid,
+            Then_the_error_says_amount_is_required,
+            Then_the_error_is_on_Amount_field);
+    }
 }

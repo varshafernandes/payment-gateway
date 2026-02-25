@@ -22,17 +22,23 @@ public sealed class ProcessPaymentCommandValidator : AbstractValidator<ProcessPa
                 .WithMessage("Card number must contain digits only.");
 
         RuleFor(x => x.ExpiryMonth)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
+                .WithMessage("Expiry month is required.")
             .InclusiveBetween(1, 12)
                 .WithMessage("Expiry month must be between 1 and 12.");
 
         RuleFor(x => x.ExpiryYear)
-            .Must(NotBeInThePast)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
+                .WithMessage("Expiry year is required.")
+            .Must(NotBeInThePast!)
                 .WithMessage("Expiry year must not be in the past.");
 
         RuleFor(x => x)
             .Must(NotBeExpired)
                 .WithMessage("Card has expired.")
-                .When(x => x.ExpiryMonth is >= 1 and <= 12);
+                .When(x => x.ExpiryMonth is >= 1 and <= 12 && x.ExpiryYear.HasValue);
 
         RuleFor(x => x.Currency)
             .Cascade(CascadeMode.Stop)
@@ -44,6 +50,9 @@ public sealed class ProcessPaymentCommandValidator : AbstractValidator<ProcessPa
                 .WithMessage(x => $"Currency '{x.Currency}' is not supported. Supported currencies are {string.Join(", ", SupportedCurrencies.All)}.");
 
         RuleFor(x => x.Amount)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
+                .WithMessage("Amount is required.")
             .GreaterThan(0)
                 .WithMessage("Amount must be greater than zero.");
 
@@ -63,14 +72,17 @@ public sealed class ProcessPaymentCommandValidator : AbstractValidator<ProcessPa
     private static bool BeSupportedCurrency(string? currency) =>
         SupportedCurrencies.IsValid(currency);
 
-    private bool NotBeInThePast(int expiryYear) =>
-        expiryYear >= _timeProvider.GetUtcNow().Year;
+    private bool NotBeInThePast(int? expiryYear) =>
+        expiryYear.HasValue && expiryYear.Value >= _timeProvider.GetUtcNow().Year;
 
     private bool NotBeExpired(ProcessPaymentCommand command)
     {
         try
         {
-            var lastDayOfExpiryMonth = new DateTime(command.ExpiryYear, command.ExpiryMonth, 1)
+            if (!command.ExpiryYear.HasValue || !command.ExpiryMonth.HasValue)
+                return false;
+
+            var lastDayOfExpiryMonth = new DateTime(command.ExpiryYear.Value, command.ExpiryMonth.Value, 1)
                 .AddMonths(1)
                 .AddDays(-1);
 
