@@ -54,6 +54,12 @@ dotnet test /p:CollectCoverage=true
 
 **POST** `/api/payments`
 
+> **Note on `amount`:** The amount is in the **minor currency unit** (the smallest denomination).  
+> For example:  
+> - USD $10.50 → `1050`  
+> - USD $0.01 → `1`  
+> - GBP £12.56 → `1256`
+
 Request:
 ```json
 {
