@@ -100,6 +100,71 @@ public partial class ProcessPaymentApiFeature : WireMockFeatureFixture
         _httpResponse = await Client.PostAsync("/api/payments", content);
     }
 
+    private async Task When_a_syntax_broken_json_body_is_posted()
+    {
+        const string brokenJson = """
+            {
+                "cardNumber": "2222405343248877"
+                "expiryMonth": 1,
+                "expiryYear": 2030,
+                "currency": "GBP",
+                "amount": 100,
+                "cvv": "123"
+            }
+            """;
+
+        var content = new StringContent(brokenJson, Encoding.UTF8, "application/json");
+        _httpResponse = await Client.PostAsync("/api/payments", content);
+    }
+
+    private async Task When_expiry_month_with_leading_zero_is_posted()
+    {
+        const string json = """
+            {
+                "cardNumber": "2222405343248877",
+                "expiryMonth": 01,
+                "expiryYear": 2030,
+                "currency": "GBP",
+                "amount": 100,
+                "cvv": "123"
+            }
+            """;
+
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        _httpResponse = await Client.PostAsync("/api/payments", content);
+    }
+
+    private async Task When_a_decimal_amount_is_posted()
+    {
+        const string json = """
+            {
+                "cardNumber": "2222405343248877",
+                "expiryMonth": 1,
+                "expiryYear": 2030,
+                "currency": "GBP",
+                "amount": 10.50,
+                "cvv": "123"
+            }
+            """;
+
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        _httpResponse = await Client.PostAsync("/api/payments", content);
+    }
+
+    private async Task When_required_numeric_fields_are_missing()
+    {
+        const string json = """
+            {
+                "cardNumber": "2222405343248877",
+                "currency": "GBP",
+                "cvv": "123"
+            }
+            """;
+
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        _httpResponse = await Client.PostAsync("/api/payments", content);
+    }
+
     private Task Then_the_response_status_code_is_200()
     {
         _httpResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -162,6 +227,50 @@ public partial class ProcessPaymentApiFeature : WireMockFeatureFixture
         errorResponse.ShouldNotBeNull();
         errorResponse!.Code.ShouldBe("VALIDATION_FAILED");
         errorResponse.Message.ShouldNotBeNullOrWhiteSpace();
+    }
+
+    private async Task Then_the_error_identifies_ExpiryMonth_with_leading_zero_message()
+    {
+        var errorResponse = await _httpResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+        errorResponse.ShouldNotBeNull();
+        errorResponse!.Code.ShouldBe("VALIDATION_FAILED");
+        errorResponse.Errors.ShouldNotBeNull();
+        errorResponse.Errors!.ShouldContain(e =>
+            e.Field == "ExpiryMonth" && e.Message.Contains("leading zero"),
+            "Expected a field-specific error on ExpiryMonth mentioning leading zeros.");
+    }
+
+    private async Task Then_the_error_identifies_Amount_with_decimal_message()
+    {
+        var errorResponse = await _httpResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+        errorResponse.ShouldNotBeNull();
+        errorResponse!.Code.ShouldBe("VALIDATION_FAILED");
+        errorResponse.Errors.ShouldNotBeNull();
+        errorResponse.Errors!.ShouldContain(e =>
+            e.Field == "Amount" && e.Message.Contains("minor units"),
+            "Expected a field-specific error on Amount mentioning minor units / no decimals.");
+    }
+
+    private async Task Then_the_error_says_request_body_is_not_valid_json()
+    {
+        var errorResponse = await _httpResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+        errorResponse.ShouldNotBeNull();
+        errorResponse!.Code.ShouldBe("VALIDATION_FAILED");
+        errorResponse.Errors.ShouldNotBeNull();
+        errorResponse.Errors!.ShouldContain(e =>
+            e.Field == "body" && e.Message.Contains("not valid JSON"),
+            "Expected a syntax error message mentioning 'not valid JSON'.");
+    }
+
+    private async Task Then_the_response_has_required_field_errors_for_missing_numeric_fields()
+    {
+        var errorResponse = await _httpResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+        errorResponse.ShouldNotBeNull();
+        errorResponse!.Code.ShouldBe("VALIDATION_FAILED");
+        errorResponse.Errors.ShouldNotBeNull();
+        errorResponse.Errors!.ShouldContain(e => e.Field == "expiryMonth", "Expected required error for expiryMonth.");
+        errorResponse.Errors!.ShouldContain(e => e.Field == "expiryYear", "Expected required error for expiryYear.");
+        errorResponse.Errors!.ShouldContain(e => e.Field == "amount", "Expected required error for amount.");
     }
 
     private async Task Then_the_response_contains_structured_validation_errors()

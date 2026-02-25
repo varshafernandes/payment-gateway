@@ -122,4 +122,44 @@ public partial class ProcessPaymentApiFeature
             Then_the_response_status_code_is_200,
             Then_the_raw_status_value_is_exactly_Authorized);
     }
+
+    [Scenario]
+    [Label("Leading zero in expiryMonth returns field-specific error")]
+    public async Task Leading_zero_in_expiry_month_returns_field_specific_error()
+    {
+        await Runner.RunScenarioAsync(
+            When_expiry_month_with_leading_zero_is_posted,
+            Then_the_response_status_code_is_400,
+            Then_the_error_identifies_ExpiryMonth_with_leading_zero_message);
+    }
+
+    [Scenario]
+    [Label("Decimal amount returns field-specific error mentioning minor units")]
+    public async Task Decimal_amount_returns_field_specific_error()
+    {
+        await Runner.RunScenarioAsync(
+            When_a_decimal_amount_is_posted,
+            Then_the_response_status_code_is_400,
+            Then_the_error_identifies_Amount_with_decimal_message);
+    }
+
+    [Scenario]
+    [Label("Missing numeric fields return required validation errors")]
+    public async Task Missing_numeric_fields_return_required_errors()
+    {
+        await Runner.RunScenarioAsync(
+            When_required_numeric_fields_are_missing,
+            Then_the_response_status_code_is_400,
+            Then_the_response_has_required_field_errors_for_missing_numeric_fields);
+    }
+
+    [Scenario]
+    [Label("Syntax-broken JSON body returns clear syntax error message")]
+    public async Task Syntax_broken_json_returns_clear_error()
+    {
+        await Runner.RunScenarioAsync(
+            When_a_syntax_broken_json_body_is_posted,
+            Then_the_response_status_code_is_400,
+            Then_the_error_says_request_body_is_not_valid_json);
+    }
 }

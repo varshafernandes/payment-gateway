@@ -144,13 +144,13 @@ public partial class ProcessPaymentHandlerFeature : FeatureFixture
 
     private Task Then_the_response_card_last_four_is_correct()
     {
-        _result!.Value!.CardNumberLastFour.ShouldBe(_command.CardNumber[^4..]);
+        _result!.Value!.CardNumberLastFour.ShouldBe(_command.CardNumber![^4..]);
         return Task.CompletedTask;
     }
 
     private Task Then_the_response_amount_matches_the_command()
     {
-        _result!.Value!.Amount.ShouldBe(_command.Amount);
+        _result!.Value!.Amount.ShouldBe(_command.Amount!.Value);
         return Task.CompletedTask;
     }
 
