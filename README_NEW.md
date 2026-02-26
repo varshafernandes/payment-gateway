@@ -41,7 +41,7 @@ Example request body (card ends in 1 → Authorized):
 ### Running Tests
 
 ```bash
-# Run all 80 tests (65 unit + 15 integration)
+# Run all 98 tests (79 unit + 19 integration)
 dotnet test
 
 # Run with test coverage
@@ -162,13 +162,17 @@ src/PaymentGateway.Api/
 ├── Domain/              # Domain models (Payment aggregate)
 ├── Infrastructure/      # External integrations (Bank, Repository)
 ├── Shared/              # Cross-cutting concerns (Result, Error, Money)
-└── Controllers/         # HTTP endpoints
+└── Startup/             # Service registration & app configuration
 
-test/PaymentGateway.Api.Tests/
-├── Features/            # Feature handler tests
+test/PaymentGateway.Api.Tests/       # Unit tests (79)
+├── Features/            # Feature handler + validation tests
 ├── Domain/              # Domain model tests
-├── Shared/              # Shared concern tests
-└── Integration/         # API integration tests
+├── Infrastructure/      # BankClient tests
+└── Shared/              # Result / Money tests
+
+test/PaymentGateway.Api.IntegrationTests/  # Integration tests (19)
+├── ProcessPaymentApiFeature.cs/.Steps.cs
+└── GetPaymentApiFeature.cs/.Steps.cs
 ```
 
 ## Development
@@ -257,11 +261,11 @@ docker run -p 8080:80 payment-gateway:latest
 ### Testing Pyramid
 
 ```
-            /  Integration  \     15 tests — Full HTTP pipeline
+            /  Integration  \     19 tests — Full HTTP pipeline
            /   (WireMock +   \    Real HTTP through WebApplicationFactory
           /   WebAppFactory)  \   Bank simulator replaced by WireMock
          /                     \
-        /     Unit Tests        \  65 tests — Handlers, Validators,
+        /     Unit Tests        \  79 tests — Handlers, Validators,
        /   (NSubstitute,         \ Domain, Infrastructure
       /    Shouldly, LightBDD)    \
      /____________________________ \
@@ -271,13 +275,14 @@ docker run -p 8080:80 payment-gateway:latest
 
 | Layer | Count | What |
 |-------|-------|------|
-| Validation (unit) | 31 | Every field rule, boundary values, edge cases |
+| Validation — parameterised (unit) | 41 | Every field rule, boundary values, edge cases — `[Theory]`/`[InlineData]` |
+| Validation — BDD (unit) | 6 | Date-sensitive expiry scenarios (pinned clock) |
 | Process Payment Handler (unit) | 9 | Authorized, declined, bank errors, auth code |
 | Get Payment Handler (unit) | 2 | Found vs not-found paths |
 | Domain / Payment (unit) | 8 | Factory methods, guards, immutability, CVV not stored |
 | Shared / Result / Money (unit) | 6 | Result pattern, Money value object, currencies |
 | BankClient (unit) | 7 | All HTTP status codes, network failure, timeout |
-| Process Payment API (integration) | 11 | End-to-end via HTTP, JSON contract, status casing |
+| Process Payment API (integration) | 15 | End-to-end via HTTP, JSON contract, status casing, field-specific parse errors |
 | Get Payment API (integration) | 4 | Retrieve, not found, invalid GUID |
 
 ### Key Testing Decisions
